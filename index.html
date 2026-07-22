@@ -1,0 +1,2162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de KPIs - Sistema Integrado Multi-Área</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <div id="loginModal" class="hidden fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+        <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <h2 id="loginTitle" class="text-lg font-extrabold text-slate-900">Acceso administrativo</h2>
+                    <p class="mt-1 text-xs text-slate-500">Ingresa tus credenciales para modificar datos y metas.</p>
+                </div>
+                <button type="button" id="closeLoginModal" aria-label="Cerrar" class="hidden rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="loginUsername" class="mb-1 block text-xs font-semibold text-slate-700">Usuario</label>
+                    <input id="loginUsername" type="text" autocomplete="username" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label for="loginPassword" class="mb-1 block text-xs font-semibold text-slate-700">Contraseña</label>
+                    <input id="loginPassword" type="password" autocomplete="current-password" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <p id="loginError" class="hidden rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700" role="alert">Usuario o contraseña incorrectos.</p>
+                <button type="submit" class="w-full rounded-lg bg-brand-600 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
+                    <i class="fa-solid fa-lock-open mr-1"></i> Ingresar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <header id="appHeader" class="hidden bg-slate-900 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 flex-wrap gap-2">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-brand-600 rounded-lg text-white shadow-inner">
+                        <i class="fa-solid fa-chart-pie text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight leading-tight">Control de KPIs Empresariales Integrados</h1>
+                        <p class="text-xs text-slate-400 hidden sm:block">Comercial • Operaciones • Finanzas • Talento & CS</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center bg-slate-800/80 rounded-lg px-3 py-1.5 border border-slate-700/60 relative">
+                        <i class="fa-solid fa-building text-amber-400 mr-2 text-sm"></i>
+                        <label for="companySelector" class="sr-only">Seleccionar Empresa</label>
+                        <select id="companySelector" class="bg-transparent text-sm font-semibold text-white appearance-none border-0 outline-none cursor-pointer pr-6 [&>option]:bg-slate-900 [&>option]:text-slate-100"></select>
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-400 pointer-events-none absolute right-2.5"></i>
+                    </div>
+                    <div class="flex items-center bg-slate-800/80 rounded-lg px-3 py-1.5 border border-slate-700/60 relative">
+                        <i class="fa-regular fa-calendar text-brand-400 mr-2 text-sm"></i>
+                        <label for="monthSelector" class="sr-only">Seleccionar Período</label>
+                        <select id="monthSelector" class="bg-transparent text-sm font-semibold text-white appearance-none border-0 outline-none focus:outline-none focus:ring-0 cursor-pointer pr-6 [&>option]:bg-slate-900 [&>option]:text-slate-100">
+                        </select>
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-400 pointer-events-none absolute right-2.5"></i>
+                    </div>
+
+                    <button id="exportBtn" title="Exportar Datos a JSON" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg border border-slate-700 transition">
+                        <i class="fa-solid fa-download text-sm"></i>
+                    </button>
+                    <button id="globalLogoutBtn" title="Cerrar sesión" class="bg-rose-900/70 hover:bg-rose-800 text-rose-100 p-2 rounded-lg border border-rose-800 transition">
+                        <i class="fa-solid fa-right-from-bracket text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Sub-header -->
+        <div class="bg-slate-800 border-t border-slate-700/60 overflow-x-auto">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 sm:space-x-3 py-2 text-xs sm:text-sm">
+                <button onclick="switchView('executive')" id="nav-executive" class="nav-btn active px-3 py-2 rounded-md font-medium text-white bg-brand-600 flex items-center space-x-2 whitespace-nowrap transition">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>General</span>
+                </button>
+                <button onclick="switchView('commercial')" id="nav-commercial" class="nav-btn px-3 py-2 rounded-md font-medium text-slate-300 hover:text-white hover:bg-slate-700 flex items-center space-x-2 whitespace-nowrap transition">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    <span>Comercial & Clientes</span>
+                </button>
+                <button onclick="switchView('operations')" id="nav-operations" class="nav-btn px-3 py-2 rounded-md font-medium text-slate-300 hover:text-white hover:bg-slate-700 flex items-center space-x-2 whitespace-nowrap transition">
+                    <i class="fa-solid fa-boxes-packing"></i>
+                    <span>Operaciones & Logística</span>
+                </button>
+                <button onclick="switchView('finance')" id="nav-finance" class="nav-btn px-3 py-2 rounded-md font-medium text-slate-300 hover:text-white hover:bg-slate-700 flex items-center space-x-2 whitespace-nowrap transition">
+                    <i class="fa-solid fa-coins"></i>
+                    <span>Finanzas & Liquidez</span>
+                </button>
+                <button onclick="switchView('talent')" id="nav-talent" class="nav-btn px-3 py-2 rounded-md font-medium text-slate-300 hover:text-white hover:bg-slate-700 flex items-center space-x-2 whitespace-nowrap transition">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>Talento & Customer Care</span>
+                </button>
+                <button onclick="switchView('admin')" id="nav-admin" class="nav-btn px-3 py-2 rounded-md font-medium text-emerald-400 hover:text-white hover:bg-slate-700 flex items-center space-x-2 whitespace-nowrap transition ml-auto">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Administración</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="appMain" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+        <!-- VIEW 1: EXECUTIVE OVERVIEW -->
+        <section id="view-executive" class="view-panel space-y-6">
+            <div class="bg-gradient-to-r from-slate-900 via-brand-900 to-slate-800 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold tracking-tight">Resumen Ejecutivo Multi-Área</h2>
+                    <p class="text-slate-300 text-sm mt-1">Evaluación global del desempeño en 12 indicadores clave corporativos.</p>
+                </div>
+                <div class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10">
+                    <span id="statusDot" class="inline-block w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="text-xs font-semibold text-slate-100" id="execStatusBadge">Cargando Estado...</span>
+                </div>
+            </div>
+
+            <!-- Executive Dynamic Cards Grid (12 KPIs) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="execCardsContainer"></div>
+
+            <div id="strategicKpisSection" class="hidden space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            KPIs Estratégicos
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Información disponible para Administración, Dirección y Gerencia.</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glass-card rounded-2xl p-4 border-l-4 border-l-blue-500 shadow-sm"><p class="text-xs font-semibold text-slate-500">Cumplimiento de ventas</p><p id="strat-sales-compliance" class="mt-2 text-2xl font-extrabold text-slate-900">0%</p><p id="strat-sales-compliance-status" class="mt-2 text-[10px] font-semibold"></p></div>
+                    <div class="glass-card rounded-2xl p-4 border-l-4 border-l-emerald-500 shadow-sm"><p class="text-xs font-semibold text-slate-500">Margen bruto</p><p id="strat-gross-margin" class="mt-2 text-2xl font-extrabold text-slate-900">0%</p><p id="strat-gross-margin-status" class="mt-2 text-[10px] font-semibold"></p></div>
+                    <div class="glass-card rounded-2xl p-4 border-l-4 border-l-green-500 shadow-sm"><p class="text-xs font-semibold text-slate-500">Margen neto</p><p id="strat-net-margin" class="mt-2 text-2xl font-extrabold text-slate-900">0%</p><p id="strat-net-margin-status" class="mt-2 text-[10px] font-semibold"></p></div>
+                    <div class="glass-card rounded-2xl p-4 border-l-4 border-l-orange-500 shadow-sm"><p class="text-xs font-semibold text-slate-500">Rotación de inventario</p><p id="strat-inventory-turnover" class="mt-2 text-2xl font-extrabold text-slate-900">0x</p><p id="strat-inventory-turnover-status" class="mt-2 text-[10px] font-semibold"></p></div>
+                    <div class="glass-card rounded-2xl p-4 border-l-4 border-l-amber-500 shadow-sm"><p class="text-xs font-semibold text-slate-500">DOY (días de inventario)</p><p id="strat-doy" class="mt-2 text-2xl font-extrabold text-slate-900">0 días</p><p id="strat-doy-status" class="mt-2 text-[10px] font-semibold"></p></div>
+                    <div class="glass-card rounded-2xl p-4 border-l-4 border-l-violet-500 shadow-sm"><p class="text-xs font-semibold text-slate-500">ROI Marketing</p><p id="strat-roi-mkt" class="mt-2 text-2xl font-extrabold text-slate-900">0%</p><p id="strat-roi-mkt-status" class="mt-2 text-[10px] font-semibold"></p></div>
+                    <div class="glass-card rounded-2xl p-4 border-l-4 border-l-indigo-500 shadow-sm"><p class="text-xs font-semibold text-slate-500">Conversión de leads de Marketing</p><p id="strat-mkt-conversion" class="mt-2 text-2xl font-extrabold text-slate-900">0%</p><p id="strat-mkt-conversion-status" class="mt-2 text-[10px] font-semibold"></p></div>
+                </div>
+            </div>
+
+            <!-- Executive Overview Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass-card rounded-2xl p-5 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-chart-area text-brand-600"></i> Eficiencia Comercial (CAC vs LTV)
+                        </h3>
+                        <span class="text-xs text-slate-500">Comercial</span>
+                    </div>
+                    <div class="h-64">
+                        <canvas id="execCommercialChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-5 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-chart-bar text-emerald-600"></i> Desempeño Operativo & Rentabilidad
+                        </h3>
+                        <span class="text-xs text-slate-500">Operaciones & Finanzas</span>
+                    </div>
+                    <div class="h-64">
+                        <canvas id="execOpsFinanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-commercial" class="view-panel hidden space-y-6">
+            <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Gerencia Comercial & Clientes</h2>
+                    <p class="text-sm text-slate-500">Métricas de marketing, conversión de ventas, fidelización y valor del cliente.</p>
+                </div>
+                <span class="text-xs bg-sky-100 text-sky-800 font-semibold px-3 py-1 rounded-full self-start sm:self-auto">Atracción, Conversión & Retención</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- CAC Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-sky-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Marketing</span>
+                            <h3 class="text-sm font-bold text-slate-800 mt-1">CAC (Costo Adquisición)</h3>
+                        </div>
+                        <div class="p-2 bg-sky-50 rounded-xl text-sky-600"><i class="fa-solid fa-user-plus text-sm"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-2xl font-extrabold text-slate-900" id="comm-cac-value">$0</span>
+                        <span id="comm-cac-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-2">Mkt: <strong id="comm-mkt-spend" class="text-slate-700">$0</strong> | Nuevos: <strong id="comm-new-clients" class="text-slate-700">0</strong></p>
+                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+                        Meta: ≤ <strong id="comm-cac-target">$0</strong>
+                    </div>
+                </div>
+
+                <!-- Tasa Conversión Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-indigo-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ventas</span>
+                            <h3 class="text-sm font-bold text-slate-800 mt-1">Tasa Conversión</h3>
+                        </div>
+                        <div class="p-2 bg-indigo-50 rounded-xl text-indigo-600"><i class="fa-solid fa-filter-circle-dollar text-sm"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-2xl font-extrabold text-slate-900" id="comm-conv-value">0%</span>
+                        <span id="comm-conv-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-2">Ventas: <strong id="comm-closed-sales" class="text-slate-700">0</strong> / Oportunidades: <strong id="comm-prospects" class="text-slate-700">0</strong></p>
+                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+                        Meta: ≥ <strong id="comm-conv-target">0%</strong>
+                    </div>
+                </div>
+
+                <!-- Retención Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-violet-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fidelización</span>
+                            <h3 class="text-sm font-bold text-slate-800 mt-1">Retención Clientes</h3>
+                        </div>
+                        <div class="p-2 bg-violet-50 rounded-xl text-violet-600"><i class="fa-solid fa-arrows-to-circle text-sm"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-2xl font-extrabold text-slate-900" id="comm-retention-value">0%</span>
+                        <span id="comm-retention-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-2">Retenidos: <strong id="comm-retained-clients" class="text-slate-700">0</strong> / Total Activos: <strong id="comm-active-clients" class="text-slate-700">0</strong></p>
+                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+                        Meta: ≥ <strong id="comm-retention-target">0%</strong>
+                    </div>
+                </div>
+
+                <!-- NEW: LTV Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-blue-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Valor Cliente</span>
+                            <h3 class="text-sm font-bold text-slate-800 mt-1">LTV (Lifetime Value)</h3>
+                        </div>
+                        <div class="p-2 bg-blue-50 rounded-xl text-blue-600"><i class="fa-solid fa-gem text-sm"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-2xl font-extrabold text-slate-900" id="comm-ltv-value">$0</span>
+                        <span id="comm-ltv-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-2">Ratio LTV : CAC = <strong id="comm-ltv-ratio" class="text-slate-800 font-bold">0.0x</strong></p>
+                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+                        Meta LTV:CAC ≥ <strong id="comm-ltv-target">3.0x</strong>
+                    </div>
+                </div>
+
+                <!-- Utilidad Comercial Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-emerald-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Rentabilidad</span>
+                            <h3 class="text-sm font-bold text-slate-800 mt-1">Utilidad Operativa</h3>
+                        </div>
+                        <div class="p-2 bg-emerald-50 rounded-xl text-emerald-600"><i class="fa-solid fa-sack-dollar text-sm"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-2xl font-extrabold text-slate-900" id="comm-netprofit-value">$0</span>
+                        <span id="comm-netprofit-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-2">Ticket Promedio: <strong id="comm-ticket-value" class="text-slate-700">$0</strong></p>
+                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+                        Ventas Netas - Costos Mkt
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-sky-600"></i> Evolución Comercial: Retención y Conversión de Ventas
+                </h3>
+                <div class="h-72">
+                    <canvas id="commercialDetailChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-operations" class="view-panel hidden space-y-6">
+            <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Gerencia de Operaciones & Logística</h2>
+                    <p class="text-sm text-slate-500">Métricas de calidad de entregas, tiempos de respuesta y gestión de inventario.</p>
+                </div>
+                <span class="text-xs bg-amber-100 text-amber-800 font-semibold px-3 py-1 rounded-full self-start sm:self-auto">Calidad, Cadena de Suministro & Eficiencia</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- OTIF Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-amber-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Cumplimiento</span>
+                            <h3 class="text-base font-bold text-slate-800 mt-1">OTIF (Entregas OK)</h3>
+                        </div>
+                        <div class="p-2.5 bg-amber-50 rounded-xl text-amber-600"><i class="fa-solid fa-truck-fast text-lg"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-slate-900" id="ops-otif-value">0%</span>
+                        <span id="ops-otif-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Pedidos A Tiempo & Completos: <strong id="ops-otif-orders" class="text-slate-700">0</strong> / <strong id="ops-total-orders" class="text-slate-700">0</strong></p>
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≥ <strong id="ops-otif-target">0%</strong>
+                    </div>
+                </div>
+
+                <!-- Lead Time Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-purple-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Velocidad</span>
+                            <h3 class="text-base font-bold text-slate-800 mt-1">Tiempo Ciclo (Lead Time)</h3>
+                        </div>
+                        <div class="p-2.5 bg-purple-50 rounded-xl text-purple-600"><i class="fa-solid fa-stopwatch text-lg"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-slate-900" id="ops-lead-value">0 Días</span>
+                        <span id="ops-lead-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Días Acumulados: <strong id="ops-lead-days" class="text-slate-700">0</strong> | Total Pedidos: <strong id="ops-lead-orders" class="text-slate-700">0</strong></p>
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≤ <strong id="ops-lead-target">0 Días</strong>
+                    </div>
+                </div>
+
+                <!-- Defect Rate Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-rose-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Calidad</span>
+                            <h3 class="text-base font-bold text-slate-800 mt-1">Tasa de Defectos</h3>
+                        </div>
+                        <div class="p-2.5 bg-rose-50 rounded-xl text-rose-600"><i class="fa-solid fa-triangle-exclamation text-lg"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-slate-900" id="ops-defect-value">0%</span>
+                        <span id="ops-defect-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Incidencias/Devoluciones: <strong id="ops-defect-orders" class="text-slate-700">0</strong> / <strong id="ops-defect-total-orders" class="text-slate-700">0</strong></p>
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≤ <strong id="ops-defect-target">0%</strong>
+                    </div>
+                </div>
+
+                <!-- Rotación Inventario Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-orange-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Almacén</span>
+                            <h3 class="text-base font-bold text-slate-800 mt-1">Rotación Inventario</h3>
+                        </div>
+                        <div class="p-2.5 bg-orange-50 rounded-xl text-orange-600"><i class="fa-solid fa-arrows-rotate text-lg"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-slate-900" id="ops-rot-value">0.0x</span>
+                        <span id="ops-rot-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">COGS: <strong id="ops-cogs" class="text-slate-700">$0</strong> | Inv. Prom: <strong id="ops-inv-avg" class="text-slate-700">$0</strong></p>
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≥ <strong id="ops-rot-target">0x</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-warehouse text-amber-600"></i> Tendencia de Eficiencia Operativa y Calidad
+                </h3>
+                <div class="h-72">
+                    <canvas id="opsDetailChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-finance" class="view-panel hidden space-y-6">
+            <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Área de Finanzas & Liquidez</h2>
+                    <p class="text-sm text-slate-500">Métricas de margen bruto, utilidad neta real y gestión de flujo de caja (DSO).</p>
+                </div>
+                <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-3 py-1 rounded-full self-start sm:self-auto">Rentabilidad & Salud Financiera</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Margen Bruto Card -->
+                <div class="glass-card rounded-2xl p-6 shadow-sm border-l-4 border-l-emerald-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Rentabilidad Operativa</span>
+                            <h3 class="text-lg font-bold text-slate-800 mt-1">Margen Bruto</h3>
+                        </div>
+                        <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600"><i class="fa-solid fa-hand-holding-dollar text-xl"></i></div>
+                    </div>
+                    <div class="mt-4 flex items-baseline gap-3">
+                        <span class="text-3xl font-extrabold text-slate-900" id="fin-margin-value">0%</span>
+                        <span id="fin-margin-status" class="text-xs px-2.5 py-1 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Ventas: <strong id="fin-sales" class="text-slate-700">$0</strong> | Costos Directos: <strong id="fin-costs" class="text-slate-700">$0</strong></p>
+                    <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≥ <strong id="fin-margin-target">0%</strong>
+                    </div>
+                </div>
+
+                <!-- NEW: Margen Neto Card -->
+                <div class="glass-card rounded-2xl p-6 shadow-sm border-l-4 border-l-green-600">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Rentabilidad Final</span>
+                            <h3 class="text-lg font-bold text-slate-800 mt-1">Margen Neto (%)</h3>
+                        </div>
+                        <div class="p-3 bg-green-50 rounded-xl text-green-600"><i class="fa-solid fa-scale-balanced text-xl"></i></div>
+                    </div>
+                    <div class="mt-4 flex items-baseline gap-3">
+                        <span class="text-3xl font-extrabold text-slate-900" id="fin-netmargin-value">0%</span>
+                        <span id="fin-netmargin-status" class="text-xs px-2.5 py-1 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Utilidad Neta: <strong id="fin-netincome" class="text-slate-700">$0</strong></p>
+                    <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≥ <strong id="fin-netmargin-target">0%</strong>
+                    </div>
+                </div>
+
+                <!-- DSO Card -->
+                <div id="financeDsoCard" class="glass-card rounded-2xl p-6 shadow-sm border-l-4 border-l-teal-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Liquidez & Cobranzas</span>
+                            <h3 class="text-lg font-bold text-slate-800 mt-1">Días de Cobro (DSO)</h3>
+                        </div>
+                        <div class="p-3 bg-teal-50 rounded-xl text-teal-600"><i class="fa-solid fa-clock-rotate-left text-xl"></i></div>
+                    </div>
+                    <div class="mt-4 flex items-baseline gap-3">
+                        <span class="text-3xl font-extrabold text-slate-900" id="fin-dso-value">0 Días</span>
+                        <span id="fin-dso-status" class="text-xs px-2.5 py-1 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Cuentas por Cobrar: <strong id="fin-ar" class="text-slate-700">$0</strong> | Ventas a Crédito: <strong id="fin-credit-sales" class="text-slate-700">$0</strong></p>
+                    <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≤ <strong id="fin-dso-target">0 días</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-emerald-600"></i> Desglose Financiero Mensual (Ventas vs Costos)
+                </h3>
+                <div class="h-72">
+                    <canvas id="financeDetailChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-talent" class="view-panel hidden space-y-6">
+            <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Gestión de Talento & Customer Care</h2>
+                    <p class="text-sm text-slate-500">Indicadores de estabilidad laboral, experiencia del equipo y satisfacción del cliente.</p>
+                </div>
+                <span class="text-xs bg-purple-100 text-purple-800 font-semibold px-3 py-1 rounded-full self-start sm:self-auto">Capital Humano & CSAT</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- Rotación Personal Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-rose-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Recursos Humanos</span>
+                            <h3 class="text-base font-bold text-slate-800 mt-1">Rotación Personal</h3>
+                        </div>
+                        <div class="p-2.5 bg-rose-50 rounded-xl text-rose-600"><i class="fa-solid fa-user-minus text-lg"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-slate-900" id="hr-turnover-value">0%</span>
+                        <span id="hr-turnover-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Bajas del Mes: <strong id="hr-exits" class="text-slate-700">0</strong> | Plantilla Total: <strong id="hr-total-staff" class="text-slate-700">0</strong></p>
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≤ <strong id="hr-turnover-target">0%</strong>
+                    </div>
+                </div>
+
+                <!-- CSAT Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-cyan-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Customer Success</span>
+                            <h3 class="text-base font-bold text-slate-800 mt-1">Satisfacción (CSAT)</h3>
+                        </div>
+                        <div class="p-2.5 bg-cyan-50 rounded-xl text-cyan-600"><i class="fa-solid fa-face-smile text-lg"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-slate-900" id="hr-csat-value">0%</span>
+                        <span id="hr-csat-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Encuestas Positivas: <strong id="hr-csat-pos" class="text-slate-700">0</strong> / Total: <strong id="hr-csat-total" class="text-slate-700">0</strong></p>
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≥ <strong id="hr-csat-target">0%</strong>
+                    </div>
+                </div>
+
+                <!-- eNPS Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-fuchsia-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Clima Laboral</span>
+                            <h3 class="text-base font-bold text-slate-800 mt-1">eNPS (Equipo)</h3>
+                        </div>
+                        <div class="p-2.5 bg-fuchsia-50 rounded-xl text-fuchsia-600"><i class="fa-solid fa-heart-pulse text-lg"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-slate-900" id="hr-enps-value">0</span>
+                        <span id="hr-enps-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Satisfacción del colaborador (-100 a +100)</p>
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≥ <strong id="hr-enps-target">0 pts</strong>
+                    </div>
+                </div>
+
+                <!-- Ventas por Empleado Card -->
+                <div class="glass-card rounded-2xl p-5 shadow-sm border-l-4 border-l-indigo-600">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Eficiencia Talento</span>
+                            <h3 class="text-base font-bold text-slate-800 mt-1">Ventas / Empleado</h3>
+                        </div>
+                        <div class="p-2.5 bg-indigo-50 rounded-xl text-indigo-600"><i class="fa-solid fa-chart-line text-lg"></i></div>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-slate-900" id="hr-salesemp-value">$0</span>
+                        <span id="hr-salesemp-status" class="text-xs px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Ingresos por Colaborador Activo</p>
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                        Meta: ≥ <strong id="hr-salesemp-target">$0</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-purple-600"></i> Tendencia de Satisfacción de Clientes (CSAT) vs Rotación de Personal
+                </h3>
+                <div class="h-72">
+                    <canvas id="talentDetailChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-admin" class="view-panel hidden space-y-6">
+            <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Panel de Administración de Datos</h2>
+                    <p class="text-sm text-slate-500">Modifica los números crudos del mes seleccionado para recalcular automáticamente todos los KPIs.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="manageUsersBtn" type="button" aria-expanded="false" class="hidden text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold px-3 py-2 rounded-lg transition items-center gap-1">
+                        <i class="fa-solid fa-users-gear"></i> <span>Administrar usuarios</span>
+                    </button>
+                    <button id="btnLogout" class="text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1">
+                        <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
+                    </button>
+                    <button id="btnResetDefault" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-left"></i> Restaurar Datos de Ejemplo
+                    </button>
+                </div>
+            </div>
+
+            <div id="userManagementPanel" class="hidden glass-card rounded-2xl p-6 shadow-sm border-t-4 border-t-blue-500 space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                            <i class="fa-solid fa-users text-blue-600"></i> Administración de Usuarios
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Las cuentas se almacenan en Google Sheets y las contraseñas se guardan como hashes con sal.</p>
+                    </div>
+                    <button type="button" id="refreshUsersBtn" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-3 py-2 rounded-lg">
+                        <i class="fa-solid fa-arrows-rotate"></i> Actualizar lista
+                    </button>
+                </div>
+
+                <form id="newUserForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Usuario</label>
+                        <input id="new_username" required minlength="3" pattern="[A-Za-z0-9._-]+" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre</label>
+                        <input id="new_name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Rol</label>
+                        <select id="new_role" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            <option value="editor">Editor</option>
+                            <option value="lector">Lector</option>
+                            <option value="direccion">Dirección</option>
+                            <option value="gerencia">Gerencia</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Empresas</label>
+                        <div class="flex gap-3 px-2 py-2 border border-slate-300 rounded-lg bg-white text-xs">
+                            <label class="flex items-center gap-1"><input id="new_company_artico" type="checkbox" value="ARTICO" checked> ARTICO</label>
+                            <label class="flex items-center gap-1"><input id="new_company_luxxor" type="checkbox" value="LUXXOR" checked> LUXXOR</label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Contraseña inicial</label>
+                        <input id="new_password" type="password" required minlength="8" autocomplete="new-password" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold">
+                        <i class="fa-solid fa-user-plus"></i> Crear usuario
+                    </button>
+                </form>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="min-w-full text-xs">
+                        <thead class="bg-slate-100 text-slate-700">
+                            <tr><th class="text-left px-3 py-2">Usuario</th><th class="text-left px-3 py-2">Nombre</th><th class="text-left px-3 py-2">Rol</th><th class="text-left px-3 py-2">Empresas</th><th class="text-left px-3 py-2">Estado</th><th class="text-left px-3 py-2">Último acceso</th><th class="text-right px-3 py-2">Acción</th></tr>
+                        </thead>
+                        <tbody id="usersTableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Data Input Form -->
+                <div class="lg:col-span-2 glass-card rounded-2xl p-6 shadow-sm space-y-6">
+                    <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+                        <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                            <i class="fa-solid fa-pen-to-square text-brand-600"></i> 
+                            Ingreso de Datos Primarios - <span id="adminSelectedMonthLabel" class="text-brand-600">Junio 2026</span>
+                        </h3>
+                    </div>
+
+                    <form id="kpiDataForm" class="space-y-6">
+                        <!-- Group 1: Comercial -->
+                        <div class="bg-sky-50/50 p-4 rounded-xl border border-sky-100 space-y-4">
+                            <h4 class="font-bold text-sky-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-bullhorn text-sky-600"></i> 1. Área Comercial, Mkt & Clientes
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Gasto Mkt ($)</label>
+                                    <input type="number" id="input_mkt_spend" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nuevos Clientes (#)</label>
+                                    <input type="number" id="input_new_clients" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Ventas Cerradas (#)</label>
+                                    <input type="number" id="input_closed_sales" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Cotizaciones (#)</label>
+                                    <input type="number" id="input_prospects" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Clientes Retenidos (#)</label>
+                                    <input type="number" id="input_retained_clients" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Total Clientes Activos (#)</label>
+                                    <input type="number" id="input_active_clients" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">LTV Estimado por Cliente ($)</label>
+                                    <input type="number" id="input_ltv" step="1" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Meta de Ventas del Mes ($)</label>
+                                    <input type="number" id="input_sales_target" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Utilidad Atribuible a Marketing ($)</label>
+                                    <input type="number" id="input_mkt_attributed_profit" step="0.01" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Leads de Marketing (#)</label>
+                                    <input type="number" id="input_mkt_leads" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Leads de Marketing Convertidos (#)</label>
+                                    <input type="number" id="input_mkt_converted_leads" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 2: Operaciones -->
+                        <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-100 space-y-4">
+                            <h4 class="font-bold text-amber-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-boxes-packing text-amber-600"></i> 2. Operaciones & Logística
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Pedidos OTIF (#)</label>
+                                    <input type="number" id="input_otif_orders" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Total Pedidos (#)</label>
+                                    <input type="number" id="input_total_orders" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Lead Time Días Totales</label>
+                                    <input type="number" id="input_lead_days" step="0.1" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Pedidos Defectuosos (#)</label>
+                                    <input type="number" id="input_defective_orders" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Costo Ventas - COGS ($)</label>
+                                    <input type="number" id="input_cogs" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Inventario Promedio ($)</label>
+                                    <input type="number" id="input_inv_avg" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Inventario Final ($)</label>
+                                    <input type="number" id="input_inv_end" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Días del Período</label>
+                                    <input type="number" id="input_period_days" min="1" max="366" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 3: Finanzas -->
+                        <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 space-y-4">
+                            <h4 class="font-bold text-emerald-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-coins text-emerald-600"></i> 3. Área Financiera
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Ventas Totales ($)</label>
+                                    <input type="number" id="input_total_sales" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Costos Directos ($)</label>
+                                    <input type="number" id="input_direct_costs" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Utilidad Neta Real ($)</label>
+                                    <input type="number" id="input_net_income" step="0.01" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none">
+                                </div>
+                                <div id="creditArField">
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Cuentas por Cobrar ($)</label>
+                                    <input type="number" id="input_ar" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                                </div>
+                                <div id="creditSalesField">
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Ventas a Crédito ($)</label>
+                                    <input type="number" id="input_credit_sales" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 4: Talento y Customer Care -->
+                        <div class="bg-purple-50/50 p-4 rounded-xl border border-purple-100 space-y-4">
+                            <h4 class="font-bold text-purple-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-users-gear text-purple-600"></i> 4. Talento, RRHH & Customer Care
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Bajas de Personal (#)</label>
+                                    <input type="number" id="input_hr_exits" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Total Empleados (#)</label>
+                                    <input type="number" id="input_total_staff" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Promedio Empleados del Mes (#)</label>
+                                    <input type="number" id="input_avg_staff" step="0.1" min="0.1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">CSAT Positivas (#)</label>
+                                    <input type="number" id="input_csat_pos" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Total Encuestas CSAT (#)</label>
+                                    <input type="number" id="input_csat_total" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">eNPS Score (-100 a +100)</label>
+                                    <input type="number" id="input_enps" min="-100" max="100" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-fuchsia-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" id="btnCancelEdit" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold text-sm hover:bg-slate-100 transition">Descartar</button>
+                            <button type="submit" class="px-6 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-sm shadow-md transition flex items-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios del Mes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Target Benchmark Config -->
+                <div class="space-y-6">
+                    <div class="glass-card rounded-2xl p-6 shadow-sm border-t-4 border-t-emerald-500 space-y-4">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-bullseye text-emerald-600"></i> Metas Globales (Targets)
+                        </h3>
+                        <p class="text-xs text-slate-500">Define los umbrales estándar para clasificar los indicadores en Cumple / Alerta.</p>
+
+                        <form id="targetsForm" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta CAC Máximo ($)</label>
+                                <input type="number" id="target_cac" step="1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Tasa Conversión Mínima (%)</label>
+                                <input type="number" id="target_conv" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Retención Mínima (%)</label>
+                                <input type="number" id="target_retention" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Ratio LTV : CAC Mínimo</label>
+                                <input type="number" id="target_ltv_ratio" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta OTIF Mínimo (%)</label>
+                                <input type="number" id="target_otif" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Lead Time Máximo (Días)</label>
+                                <input type="number" id="target_lead" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Rotación Mínima (x)</label>
+                                <input type="number" id="target_rot" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Margen Bruto Mínimo (%)</label>
+                                <input type="number" id="target_margin" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Margen Neto Mínimo (%)</label>
+                                <input type="number" id="target_netmargin" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Rotación Personal Máxima (%)</label>
+                                <input type="number" id="target_turnover" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta CSAT Mínimo (%)</label>
+                                <input type="number" id="target_csat" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Errores Máxima (%)</label>
+                                <input type="number" id="target_defect_rate" step="0.1" min="0" max="100" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta DSO Máximo (días)</label>
+                                <input type="number" id="target_dso" step="0.1" min="0" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta eNPS Mínimo</label>
+                                <input type="number" id="target_enps" step="1" min="-100" max="100" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Meta Ventas/Empleado Mínima ($)</label>
+                                <input type="number" id="target_sales_per_emp" step="1" min="0" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Cumplimiento Ventas Mínimo (%)</label>
+                                <input type="number" id="target_sales_compliance" step="0.1" min="0" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">DOY Máximo (días)</label>
+                                <input type="number" id="target_doy" step="0.1" min="0" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">ROI Marketing Mínimo (%)</label>
+                                <input type="number" id="target_roi_mkt" step="0.1" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700">Conversión Lead Mk Mínima (%)</label>
+                                <input type="number" id="target_mkt_lead_conv" step="0.1" min="0" max="100" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+                            </div>
+                            <button type="submit" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold transition">
+                                Actualizar Metas
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-5 shadow-sm space-y-3 text-xs text-slate-600">
+                        <h4 class="font-bold text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-calculator text-brand-600"></i> Fórmulas del Sistema
+                        </h4>
+                        <ul class="space-y-1.5 list-disc pl-4">
+                            <li><strong>CAC:</strong> Gasto Mkt / Clientes Nuevos</li>
+                            <li><strong>Ratio LTV:CAC:</strong> Valor Vida Cliente / CAC</li>
+                            <li><strong>OTIF:</strong> (Pedidos OTIF / Pedidos Totales) × 100</li>
+                            <li><strong>Margen Neto:</strong> (Utilidad Neta / Ventas) × 100</li>
+                            <li><strong>Rotación RRHH:</strong> (Bajas / Promedio de Empleados) × 100</li>
+                            <li><strong>CSAT:</strong> (Respu. Positivas / Total Encuestas) × 100</li>
+                            <li><strong>Ventas/Empleado:</strong> Ventas Totales / Empleados</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <footer id="appFooter" class="hidden bg-slate-900 text-slate-400 border-t border-slate-800 py-4 text-center text-xs mt-auto">
+        <p>© 2026 Sistema Integrado de Control de KPIs Empresariales. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+        // Database Structure with expanded multi-area KPIs
+        const defaultDatabase = {
+            targets: {
+                cac: 150,
+                conv: 15,
+                retention: 80,
+                ltv_ratio: 3.0,
+                otif: 90,
+                lead_time: 2.5,
+                defect_rate: 2.0,
+                rot: 1.5,
+                margin: 40,
+                net_margin: 15,
+                dso: 45,
+                turnover: 3.0,
+                csat: 85,
+                enps: 40,
+                sales_per_emp: 3500,
+                sales_compliance: 100,
+                doy: 60,
+                roi_mkt: 0,
+                mkt_lead_conv: 10
+            },
+            monthlyData: {
+                "2026-01": { name: "Enero 2026", mkt_spend: 12000, new_clients: 95, closed_sales: 110, prospects: 600, retained_clients: 320, active_clients: 400, ltv: 650, otif_orders: 450, total_orders: 480, lead_days: 1296, defective_orders: 12, cogs: 85000, inv_avg: 52000, total_sales: 180000, direct_costs: 95000, net_income: 28000, ar: 65000, credit_sales: 140000, hr_exits: 1, total_staff: 48, csat_pos: 340, csat_total: 400, enps: 42 },
+                "2026-02": { name: "Febrero 2026", mkt_spend: 11500, new_clients: 88, closed_sales: 105, prospects: 580, retained_clients: 330, active_clients: 410, ltv: 680, otif_orders: 430, total_orders: 470, lead_days: 1222, defective_orders: 10, cogs: 82000, inv_avg: 50000, total_sales: 175000, direct_costs: 90000, net_income: 27000, ar: 62000, credit_sales: 135000, hr_exits: 2, total_staff: 50, csat_pos: 350, csat_total: 410, enps: 38 },
+                "2026-03": { name: "Marzo 2026", mkt_spend: 13500, new_clients: 102, closed_sales: 125, prospects: 650, retained_clients: 350, active_clients: 430, ltv: 720, otif_orders: 490, total_orders: 510, lead_days: 1224, defective_orders: 9, cogs: 92000, inv_avg: 55000, total_sales: 195000, direct_costs: 100000, net_income: 32000, ar: 70000, credit_sales: 150000, hr_exits: 1, total_staff: 51, csat_pos: 380, csat_total: 430, enps: 45 },
+                "2026-04": { name: "Abril 2026", mkt_spend: 14000, new_clients: 98, closed_sales: 120, prospects: 680, retained_clients: 360, active_clients: 440, ltv: 700, otif_orders: 460, total_orders: 500, lead_days: 1250, defective_orders: 11, cogs: 90000, inv_avg: 54000, total_sales: 190000, direct_costs: 98000, net_income: 30000, ar: 68000, credit_sales: 148000, hr_exits: 0, total_staff: 52, csat_pos: 390, csat_total: 440, enps: 48 },
+                "2026-05": { name: "Mayo 2026", mkt_spend: 12800, new_clients: 90, closed_sales: 115, prospects: 620, retained_clients: 375, active_clients: 450, ltv: 710, otif_orders: 480, total_orders: 505, lead_days: 1161, defective_orders: 8, cogs: 88000, inv_avg: 51000, total_sales: 185000, direct_costs: 94000, net_income: 29500, ar: 64000, credit_sales: 142000, hr_exits: 1, total_staff: 53, csat_pos: 410, csat_total: 450, enps: 50 },
+                "2026-06": { name: "Junio 2026", mkt_spend: 15000, new_clients: 110, closed_sales: 140, prospects: 720, retained_clients: 400, active_clients: 470, ltv: 750, otif_orders: 520, total_orders: 535, lead_days: 1123, defective_orders: 7, cogs: 98000, inv_avg: 58000, total_sales: 210000, direct_costs: 105000, net_income: 36000, ar: 72000, credit_sales: 160000, hr_exits: 1, total_staff: 55, csat_pos: 440, csat_total: 480, enps: 52 }
+            }
+        };
+
+        function mergeWithDefaults(savedData) {
+            const legacyMonthly = { ...defaultDatabase.monthlyData, ...(savedData?.monthlyData || {}) };
+            const buildCompanyData = (company) => {
+                const source = { ...legacyMonthly, ...(savedData?.companyData?.[company] || {}) };
+                const copy = JSON.parse(JSON.stringify(source));
+                if (company === 'ARTICO') {
+                    Object.values(copy).forEach(month => {
+                        month.ar = 0;
+                        month.credit_sales = 0;
+                    });
+                }
+                return copy;
+            };
+            return {
+                ...JSON.parse(JSON.stringify(defaultDatabase)),
+                ...savedData,
+                targets: { ...defaultDatabase.targets, ...(savedData?.targets || {}) },
+                monthlyData: legacyMonthly,
+                companyData: {
+                    ARTICO: buildCompanyData('ARTICO'),
+                    LUXXOR: buildCompanyData('LUXXOR')
+                }
+            };
+        }
+
+        function loadStoredData() {
+            return mergeWithDefaults(defaultDatabase);
+        }
+
+        let appData = loadStoredData();
+        let selectedMonthKey = "2026-06";
+        let selectedCompany = sessionStorage.getItem('kpi_selected_company') || 'ARTICO';
+        let chartInstances = {};
+
+        const getMonthlyData = () => appData.companyData[selectedCompany];
+        const SESSION_IDLE_MS = 10 * 60 * 1000;
+        let currentUser = null;
+        try { currentUser = JSON.parse(sessionStorage.getItem('kpi_current_user') || 'null'); } catch (error) { currentUser = null; }
+        let authToken = sessionStorage.getItem('kpi_auth_token') || '';
+        let lastActivity = Number(sessionStorage.getItem('kpi_last_activity')) || 0;
+        let isAdminAuthenticated = Boolean(currentUser && authToken && (Date.now() - lastActivity < SESSION_IDLE_MS));
+        const AUTH_API_URL = 'https://script.google.com/macros/s/AKfycbwG9NBQtxr-5jUW25vkrC8x8S6EmP9PvGhKWDzupXL-qx21oOSi9kO3pt_7dNmfWC01/exec';
+        const ADMIN_USERNAME = 'admin';
+        const ADMIN_PASSWORD_HASH = '70730fff4a21341c221bddf2f06d863009020c3d50d5f18ca67d6d7087f05790';
+
+        const isRemoteAuthConfigured = () => /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(AUTH_API_URL);
+
+        function getAllowedCompanies() {
+            if (currentUser?.role === 'admin') return ['ARTICO', 'LUXXOR'];
+            const companies = Array.isArray(currentUser?.companies) ? currentUser.companies : [];
+            return [...new Set(companies.map(value => String(value).trim().toUpperCase()))]
+                .filter(value => value === 'ARTICO' || value === 'LUXXOR');
+        }
+
+        function populateCompanySelector() {
+            const selector = document.getElementById('companySelector');
+            if (!selector) return;
+            const allowed = getAllowedCompanies();
+            selector.innerHTML = '';
+            allowed.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company;
+                option.textContent = company;
+                selector.appendChild(option);
+            });
+            if (!allowed.includes(selectedCompany)) selectedCompany = allowed[0] || 'ARTICO';
+            selector.value = selectedCompany;
+            sessionStorage.setItem('kpi_selected_company', selectedCompany);
+        }
+
+        function applyCompanyRules() {
+            const isArtico = selectedCompany === 'ARTICO';
+            ['financeDsoCard', 'creditArField', 'creditSalesField'].forEach(id => {
+                document.getElementById(id)?.classList.toggle('hidden', isArtico);
+            });
+            if (isArtico) {
+                const data = getMonthlyData()[selectedMonthKey];
+                if (data) {
+                    data.ar = 0;
+                    data.credit_sales = 0;
+                }
+            }
+        }
+
+        if (!isAdminAuthenticated) {
+            currentUser = null;
+            authToken = '';
+            lastActivity = 0;
+            sessionStorage.removeItem('kpi_admin_authenticated');
+            sessionStorage.removeItem('kpi_current_user');
+            sessionStorage.removeItem('kpi_auth_token');
+            sessionStorage.removeItem('kpi_last_activity');
+        }
+
+        async function apiRequest(action, payload = {}) {
+            if (!isRemoteAuthConfigured()) throw new Error('La conexión con Google Apps Script todavía no está configurada.');
+            const response = await fetch(AUTH_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action, ...payload })
+            });
+            if (!response.ok) throw new Error(`Error de conexión (${response.status}).`);
+            const result = await response.json();
+            if (!result.ok) throw new Error(result.error || 'La operación no pudo completarse.');
+            return result;
+        }
+
+        async function hashText(value) {
+            const bytes = new TextEncoder().encode(value);
+            const digest = await crypto.subtle.digest('SHA-256', bytes);
+            return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        function openLoginModal() {
+            const modal = document.getElementById('loginModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('loginPassword').value = '';
+            setTimeout(() => document.getElementById('loginUsername').focus(), 0);
+        }
+
+        function closeLoginModal() {
+            if (!isAdminAuthenticated) return;
+            const modal = document.getElementById('loginModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function showAuthenticatedApp() {
+            ['appHeader', 'appMain', 'appFooter'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+            closeLoginModal();
+        }
+
+        function hideAuthenticatedApp() {
+            ['appHeader', 'appMain', 'appFooter'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('strategicKpisSection').classList.add('hidden');
+        }
+
+        function persistSession() {
+            lastActivity = Date.now();
+            sessionStorage.setItem('kpi_admin_authenticated', '1');
+            sessionStorage.setItem('kpi_current_user', JSON.stringify(currentUser));
+            sessionStorage.setItem('kpi_auth_token', authToken);
+            sessionStorage.setItem('kpi_last_activity', String(lastActivity));
+            sessionStorage.setItem('kpi_selected_company', selectedCompany);
+        }
+
+        function recordActivity() {
+            if (!isAdminAuthenticated) return;
+            const now = Date.now();
+            if (now - lastActivity >= 15000) {
+                lastActivity = now;
+                sessionStorage.setItem('kpi_last_activity', String(lastActivity));
+            }
+        }
+
+        function startInactivityMonitor() {
+            ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(eventName => {
+                document.addEventListener(eventName, recordActivity, { passive: true });
+            });
+            setInterval(() => {
+                if (isAdminAuthenticated && Date.now() - lastActivity >= SESSION_IDLE_MS) {
+                    logoutUser('La sesión se cerró después de 10 minutos de inactividad.');
+                }
+            }, 15000);
+        }
+
+        function logoutUser(message = '') {
+            isAdminAuthenticated = false;
+            currentUser = null;
+            authToken = '';
+            lastActivity = 0;
+            sessionStorage.removeItem('kpi_admin_authenticated');
+            sessionStorage.removeItem('kpi_current_user');
+            sessionStorage.removeItem('kpi_auth_token');
+            sessionStorage.removeItem('kpi_last_activity');
+            sessionStorage.removeItem('kpi_selected_company');
+            hideAuthenticatedApp();
+            openLoginModal();
+            if (message) showToast(message, 'error');
+        }
+
+        // Utility Formatters
+        const fmtCurr = val => isNaN(val) || !isFinite(val) ? '$0' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+        const fmtPct = val => isNaN(val) || !isFinite(val) ? '0%' : val.toFixed(1) + '%';
+        const fmtNum = val => isNaN(val) || !isFinite(val) ? '0' : new Intl.NumberFormat('en-US').format(val);
+
+        // View Switching Mechanism
+        function switchView(viewId) {
+            if (viewId === 'admin' && !isAdminAuthenticated) {
+                openLoginModal();
+                return;
+            }
+            if (viewId === 'admin' && !['admin', 'editor'].includes(currentUser?.role)) {
+                showToast('Tu cuenta no tiene permiso para modificar datos.', 'error');
+                return;
+            }
+            document.querySelectorAll('.view-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            
+            const targetPanel = document.getElementById(`view-${viewId}`);
+            if (targetPanel) {
+                targetPanel.classList.remove('hidden');
+            }
+
+            // Highlight Active Navigation Tab
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.id === `nav-${viewId}`) {
+                    if (viewId === 'admin') {
+                        btn.className = 'nav-btn px-3 py-2 rounded-md font-medium text-white bg-emerald-600 flex items-center space-x-2 whitespace-nowrap transition ml-auto';
+                    } else {
+                        btn.className = 'nav-btn active px-3 py-2 rounded-md font-medium text-white bg-brand-600 flex items-center space-x-2 whitespace-nowrap transition';
+                    }
+                } else {
+                    if (btn.id === 'nav-admin') {
+                        btn.className = 'nav-btn px-3 py-2 rounded-md font-medium text-emerald-400 hover:text-white hover:bg-slate-700 flex items-center space-x-2 whitespace-nowrap transition ml-auto';
+                    } else {
+                        btn.className = 'nav-btn px-3 py-2 rounded-md font-medium text-slate-300 hover:text-white hover:bg-slate-700 flex items-center space-x-2 whitespace-nowrap transition';
+                    }
+                }
+            });
+
+            // Trigger chart resize to fix layout rendering
+            setTimeout(() => {
+                Object.values(chartInstances).forEach(chart => {
+                    if (chart) chart.resize();
+                });
+            }, 50);
+
+            if (viewId === 'admin') {
+                const isAdmin = currentUser?.role === 'admin';
+                const canManageUsers = isAdmin && isRemoteAuthConfigured();
+                const manageButton = document.getElementById('manageUsersBtn');
+                manageButton.classList.toggle('hidden', !canManageUsers);
+                manageButton.classList.toggle('flex', canManageUsers);
+                document.getElementById('userManagementPanel').classList.add('hidden');
+                manageButton.setAttribute('aria-expanded', 'false');
+                manageButton.querySelector('span').textContent = 'Administrar usuarios';
+            } else {
+                document.getElementById('userManagementPanel').classList.add('hidden');
+            }
+        }
+
+        function formatAccessDate(value) {
+            if (!value) return 'Nunca';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('es-SV');
+        }
+
+        function renderUsers(users) {
+            const body = document.getElementById('usersTableBody');
+            body.innerHTML = '';
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                const nextStatus = user.status === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+                row.innerHTML = `
+                    <td class="px-3 py-2 font-semibold text-slate-800"></td>
+                    <td class="px-3 py-2"></td>
+                    <td class="px-3 py-2"></td>
+                    <td class="px-3 py-2 company-access"></td>
+                    <td class="px-3 py-2"><span class="status-pill px-2 py-1 rounded-full font-semibold"></span></td>
+                    <td class="px-3 py-2 text-slate-500"></td>
+                    <td class="px-3 py-2 text-right space-x-1"><button type="button" class="save-companies px-2 py-1 rounded-md font-semibold bg-blue-100 text-blue-700">Guardar empresas</button><button type="button" class="toggle-user px-2 py-1 rounded-md font-semibold"></button></td>`;
+                const cells = row.querySelectorAll('td');
+                cells[0].textContent = user.username;
+                cells[1].textContent = user.name;
+                cells[2].textContent = user.role;
+                const companyCell = row.querySelector('.company-access');
+                const assigned = user.role === 'admin' ? ['ARTICO', 'LUXXOR'] : (user.companies || []);
+                companyCell.innerHTML = ['ARTICO', 'LUXXOR'].map(company => `
+                    <label class="inline-flex items-center gap-1 mr-2"><input type="checkbox" class="company-check" value="${company}" ${assigned.includes(company) ? 'checked' : ''} ${user.role === 'admin' ? 'disabled' : ''}> ${company}</label>`).join('');
+                cells[5].textContent = formatAccessDate(user.lastAccess);
+                const pill = row.querySelector('.status-pill');
+                pill.textContent = user.status;
+                pill.classList.add(user.status === 'ACTIVO' ? 'bg-emerald-100' : 'bg-slate-200', user.status === 'ACTIVO' ? 'text-emerald-700' : 'text-slate-600');
+                const button = row.querySelector('.toggle-user');
+                button.textContent = nextStatus === 'ACTIVO' ? 'Activar' : 'Desactivar';
+                button.classList.add(nextStatus === 'ACTIVO' ? 'bg-emerald-100' : 'bg-rose-100', nextStatus === 'ACTIVO' ? 'text-emerald-700' : 'text-rose-700');
+                button.addEventListener('click', () => changeUserStatus(user.username, nextStatus));
+                row.querySelector('.save-companies').addEventListener('click', async () => {
+                    const companies = [...row.querySelectorAll('.company-check:checked')].map(input => input.value);
+                    await changeUserCompanies(user.username, companies);
+                });
+                body.appendChild(row);
+            });
+        }
+
+        async function loadUsers() {
+            try {
+                const result = await apiRequest('listUsers', { token: authToken });
+                renderUsers(result.users || []);
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function changeUserStatus(username, status) {
+            try {
+                await apiRequest('setUserStatus', { token: authToken, username, status });
+                showToast(`Usuario ${username} actualizado.`);
+                await loadUsers();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function changeUserCompanies(username, companies) {
+            try {
+                await apiRequest('setUserCompanies', { token: authToken, username, companies });
+                showToast(`Empresas de ${username} actualizadas.`);
+                await loadUsers();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        function setStatusBadge(id, isGood, goodText = 'Cumple', badText = 'Alerta') {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = isGood ? goodText : badText;
+            el.className = `text-xs px-2 py-0.5 rounded-full font-semibold ${isGood ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`;
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-slate-900 border-emerald-500' : 'bg-slate-900 border-rose-500';
+            const iconColor = type === 'success' ? 'text-emerald-400' : 'text-rose-400';
+            const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-white border-l-4 ${bgColor} transition-all duration-300 transform translate-y-2 opacity-0 text-xs sm:text-sm max-w-sm`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} ${iconColor} text-base"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        async function loadRemoteKpiData() {
+            const result = await apiRequest('getKpiData', { token: authToken });
+            const remoteCompanyData = result.companyData || {};
+            const hasRemoteData = Object.values(remoteCompanyData).some(months => Object.keys(months || {}).length > 0);
+            if (hasRemoteData) {
+                appData = mergeWithDefaults({ companyData: remoteCompanyData, targets: result.targets || {} });
+            } else {
+                let legacyData = null;
+                try { legacyData = JSON.parse(localStorage.getItem('kpi_dashboard_db_v2') || 'null'); } catch (error) {}
+                appData = mergeWithDefaults(legacyData || { targets: result.targets || {} });
+                await saveAllRemoteData();
+            }
+            localStorage.removeItem('kpi_dashboard_db_v2');
+        }
+
+        async function saveCurrentMonth() {
+            const data = getMonthlyData()[selectedMonthKey];
+            const result = await apiRequest('saveKpiData', {
+                token: authToken,
+                company: selectedCompany,
+                month: selectedMonthKey,
+                data
+            });
+            getMonthlyData()[selectedMonthKey] = result.data || data;
+        }
+
+        async function saveTargetsRemote() {
+            await apiRequest('saveTargets', { token: authToken, targets: appData.targets });
+        }
+
+        async function saveAllRemoteData() {
+            for (const company of getAllowedCompanies()) {
+                for (const [month, data] of Object.entries(appData.companyData[company] || {})) {
+                    await apiRequest('saveKpiData', { token: authToken, company, month, data });
+                }
+            }
+            await saveTargetsRemote();
+        }
+
+        function calculateKPIs(data) {
+            const cac = data.new_clients > 0 ? data.mkt_spend / data.new_clients : 0;
+            const conv = data.prospects > 0 ? (data.closed_sales / data.prospects) * 100 : 0;
+            const retention = (data.active_clients || 0) > 0 ? ((data.retained_clients || 0) / data.active_clients) * 100 : 0;
+            const ltv = data.ltv || 0;
+            const ltv_ratio = cac > 0 ? ltv / cac : 0;
+            const net_profit = data.total_sales - data.direct_costs - (data.mkt_spend || 0);
+            const avg_ticket = data.closed_sales > 0 ? data.total_sales / data.closed_sales : 0;
+
+            const otif = data.total_orders > 0 ? (data.otif_orders / data.total_orders) * 100 : 0;
+            const lead_time = data.total_orders > 0 ? (data.lead_days / data.total_orders) : 0;
+            const defect_rate = data.total_orders > 0 ? (data.defective_orders / data.total_orders) * 100 : 0;
+            const rot = data.inv_avg > 0 ? data.cogs / data.inv_avg : 0;
+            
+            const margin = data.total_sales > 0 ? ((data.total_sales - data.direct_costs) / data.total_sales) * 100 : 0;
+            const net_margin = data.total_sales > 0 ? ((data.net_income ?? net_profit) / data.total_sales) * 100 : 0;
+            const dso = data.credit_sales > 0 ? (data.ar / data.credit_sales) * 30 : 0;
+
+            const average_staff = data.avg_staff ?? data.total_staff ?? 0;
+            const turnover = average_staff > 0 ? ((data.hr_exits || 0) / average_staff) * 100 : 0;
+            const csat = (data.csat_total || 0) > 0 ? ((data.csat_pos || 0) / data.csat_total) * 100 : 0;
+            const enps = data.enps || 0;
+            const sales_per_emp = (data.total_staff || 0) > 0 ? data.total_sales / data.total_staff : 0;
+            const sales_compliance = (data.sales_target || 0) > 0 ? (data.total_sales / data.sales_target) * 100 : 0;
+            const doy = (data.cogs || 0) > 0 ? ((data.inv_end || 0) / data.cogs) * (data.period_days || 30) : 0;
+            const roi_mkt = (data.mkt_spend || 0) > 0 ? (((data.mkt_attributed_profit || 0) - data.mkt_spend) / data.mkt_spend) * 100 : 0;
+            const mkt_lead_conv = (data.mkt_leads || 0) > 0 ? ((data.mkt_converted_leads || 0) / data.mkt_leads) * 100 : 0;
+
+            return { cac, conv, retention, ltv, ltv_ratio, net_profit, avg_ticket, otif, lead_time, defect_rate, rot, margin, net_margin, dso, turnover, csat, enps, sales_per_emp, sales_compliance, doy, roi_mkt, mkt_lead_conv };
+        }
+
+        function setStrategicStatus(id, isGood, targetText) {
+            const el = document.getElementById(id);
+            el.textContent = `${isGood ? 'Cumple' : 'Alerta'} · Meta ${targetText}`;
+            el.className = `mt-2 text-[10px] font-semibold ${isGood ? 'text-emerald-700' : 'text-rose-700'}`;
+        }
+
+        function renderStrategicKPIs(kpis, targets) {
+            const canView = ['admin', 'direccion', 'gerencia'].includes(currentUser?.role);
+            document.getElementById('strategicKpisSection').classList.toggle('hidden', !canView);
+            if (!canView) return;
+
+            document.getElementById('strat-sales-compliance').textContent = fmtPct(kpis.sales_compliance);
+            document.getElementById('strat-gross-margin').textContent = fmtPct(kpis.margin);
+            document.getElementById('strat-net-margin').textContent = fmtPct(kpis.net_margin);
+            document.getElementById('strat-inventory-turnover').textContent = kpis.rot.toFixed(2) + 'x';
+            document.getElementById('strat-doy').textContent = kpis.doy.toFixed(1) + ' días';
+            document.getElementById('strat-roi-mkt').textContent = fmtPct(kpis.roi_mkt);
+            document.getElementById('strat-mkt-conversion').textContent = fmtPct(kpis.mkt_lead_conv);
+
+            setStrategicStatus('strat-sales-compliance-status', kpis.sales_compliance >= targets.sales_compliance, `≥ ${fmtPct(targets.sales_compliance)}`);
+            setStrategicStatus('strat-gross-margin-status', kpis.margin >= targets.margin, `≥ ${fmtPct(targets.margin)}`);
+            setStrategicStatus('strat-net-margin-status', kpis.net_margin >= targets.net_margin, `≥ ${fmtPct(targets.net_margin)}`);
+            setStrategicStatus('strat-inventory-turnover-status', kpis.rot >= targets.rot, `≥ ${targets.rot}x`);
+            setStrategicStatus('strat-doy-status', kpis.doy <= targets.doy, `≤ ${targets.doy} días`);
+            setStrategicStatus('strat-roi-mkt-status', kpis.roi_mkt >= targets.roi_mkt, `≥ ${fmtPct(targets.roi_mkt)}`);
+            setStrategicStatus('strat-mkt-conversion-status', kpis.mkt_lead_conv >= targets.mkt_lead_conv, `≥ ${fmtPct(targets.mkt_lead_conv)}`);
+        }
+
+        function renderExecutiveView(kpis, targets) {
+            const container = document.getElementById('execCardsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const cards = [
+                { title: 'CAC (Adquisición)', category: 'Comercial', value: fmtCurr(kpis.cac), isGood: kpis.cac <= targets.cac, target: `≤ ${fmtCurr(targets.cac)}`, icon: 'fa-user-plus', color: 'sky' },
+                { title: 'Ratio LTV : CAC', category: 'Comercial', value: kpis.ltv_ratio.toFixed(1) + 'x', isGood: kpis.ltv_ratio >= (targets.ltv_ratio || 3.0), target: `≥ ${targets.ltv_ratio || 3.0}x`, icon: 'fa-gem', color: 'blue' },
+                { title: 'Tasa Conversión', category: 'Comercial', value: fmtPct(kpis.conv), isGood: kpis.conv >= targets.conv, target: `≥ ${fmtPct(targets.conv)}`, icon: 'fa-filter-circle-dollar', color: 'indigo' },
+                { title: 'Retención Clientes', category: 'Comercial', value: fmtPct(kpis.retention), isGood: kpis.retention >= targets.retention, target: `≥ ${fmtPct(targets.retention)}`, icon: 'fa-arrows-to-circle', color: 'violet' },
+                
+                { title: 'OTIF (Entregas OK)', category: 'Operaciones', value: fmtPct(kpis.otif), isGood: kpis.otif >= targets.otif, target: `≥ ${fmtPct(targets.otif)}`, icon: 'fa-truck-fast', color: 'amber' },
+                { title: 'Lead Time (Ciclo)', category: 'Operaciones', value: kpis.lead_time.toFixed(1) + ' Días', isGood: kpis.lead_time <= targets.lead_time, target: `≤ ${targets.lead_time} Días`, icon: 'fa-stopwatch', color: 'purple' },
+                { title: 'Rotación Inventario', category: 'Operaciones', value: kpis.rot.toFixed(2) + 'x', isGood: kpis.rot >= targets.rot, target: `≥ ${targets.rot}x`, icon: 'fa-arrows-rotate', color: 'orange' },
+                
+                { title: 'Margen Bruto', category: 'Finanzas', value: fmtPct(kpis.margin), isGood: kpis.margin >= targets.margin, target: `≥ ${fmtPct(targets.margin)}`, icon: 'fa-hand-holding-dollar', color: 'emerald' },
+                { title: 'Margen Neto', category: 'Finanzas', value: fmtPct(kpis.net_margin), isGood: kpis.net_margin >= (targets.net_margin || 15), target: `≥ ${fmtPct(targets.net_margin || 15)}`, icon: 'fa-scale-balanced', color: 'green' },
+                
+                { title: 'Rotación Personal', category: 'Talento/RRHH', value: fmtPct(kpis.turnover), isGood: kpis.turnover <= (targets.turnover || 3.0), target: `≤ ${fmtPct(targets.turnover || 3.0)}`, icon: 'fa-user-minus', color: 'rose' },
+                { title: 'CSAT Satisfacción', category: 'Customer Success', value: fmtPct(kpis.csat), isGood: kpis.csat >= (targets.csat || 85), target: `≥ ${fmtPct(targets.csat || 85)}`, icon: 'fa-face-smile', color: 'cyan' },
+                { title: 'eNPS Colaborador', category: 'Talento/RRHH', value: Math.round(kpis.enps), isGood: kpis.enps >= (targets.enps || 40), target: `≥ ${targets.enps || 40}`, icon: 'fa-heart-pulse', color: 'fuchsia' }
+            ];
+
+            let totalGood = 0;
+
+            cards.forEach(card => {
+                if (card.isGood) totalGood++;
+                const cardEl = document.createElement('div');
+                cardEl.className = `glass-card rounded-2xl p-4 shadow-sm border-l-4 border-l-${card.color}-500 hover:shadow-md transition`;
+                cardEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400">${card.category}</span>
+                            <h4 class="font-bold text-slate-800 text-xs mt-0.5">${card.title}</h4>
+                        </div>
+                        <div class="p-1.5 bg-${card.color}-50 text-${card.color}-600 rounded-lg text-xs">
+                            <i class="fa-solid ${card.icon}"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-xl font-extrabold text-slate-900">${card.value}</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${card.isGood ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                            ${card.isGood ? 'OK' : 'Alerta'}
+                        </span>
+                    </div>
+                    <div class="mt-2 pt-1.5 border-t border-slate-100 text-[10px] text-slate-500 flex justify-between">
+                        <span>Meta: <strong>${card.target}</strong></span>
+                    </div>
+                `;
+                container.appendChild(cardEl);
+            });
+
+            // Status Badge
+            const badge = document.getElementById('execStatusBadge');
+            const dot = document.getElementById('statusDot');
+            if (badge && dot) {
+                if (totalGood >= 10) {
+                    badge.textContent = `Salud Excelente (${totalGood}/12 Metas Cumplidas)`;
+                    badge.className = 'text-xs font-semibold text-emerald-200';
+                    dot.className = 'inline-block w-3 h-3 rounded-full bg-emerald-400 animate-pulse';
+                } else if (totalGood >= 7) {
+                    badge.textContent = `Salud Aceptable (${totalGood}/12 Metas Cumplidas)`;
+                    badge.className = 'text-xs font-semibold text-amber-200';
+                    dot.className = 'inline-block w-3 h-3 rounded-full bg-amber-400 animate-pulse';
+                } else {
+                    badge.textContent = `Atención Requerida (${totalGood}/12 Metas Cumplidas)`;
+                    badge.className = 'text-xs font-semibold text-rose-200';
+                    dot.className = 'inline-block w-3 h-3 rounded-full bg-rose-500 animate-pulse';
+                }
+            }
+        }
+
+        function renderCommercialView(data, kpis, targets) {
+            document.getElementById('comm-cac-value').textContent = fmtCurr(kpis.cac);
+            document.getElementById('comm-mkt-spend').textContent = fmtCurr(data.mkt_spend);
+            document.getElementById('comm-new-clients').textContent = fmtNum(data.new_clients);
+            document.getElementById('comm-cac-target').textContent = fmtCurr(targets.cac);
+            setStatusBadge('comm-cac-status', kpis.cac <= targets.cac);
+
+            document.getElementById('comm-conv-value').textContent = fmtPct(kpis.conv);
+            document.getElementById('comm-closed-sales').textContent = fmtNum(data.closed_sales);
+            document.getElementById('comm-prospects').textContent = fmtNum(data.prospects);
+            document.getElementById('comm-conv-target').textContent = fmtPct(targets.conv);
+            setStatusBadge('comm-conv-status', kpis.conv >= targets.conv);
+
+            document.getElementById('comm-retention-value').textContent = fmtPct(kpis.retention);
+            document.getElementById('comm-retained-clients').textContent = fmtNum(data.retained_clients || 0);
+            document.getElementById('comm-active-clients').textContent = fmtNum(data.active_clients || 0);
+            document.getElementById('comm-retention-target').textContent = fmtPct(targets.retention);
+            setStatusBadge('comm-retention-status', kpis.retention >= targets.retention);
+
+            document.getElementById('comm-ltv-value').textContent = fmtCurr(kpis.ltv);
+            document.getElementById('comm-ltv-ratio').textContent = kpis.ltv_ratio.toFixed(1) + 'x';
+            document.getElementById('comm-ltv-target').textContent = (targets.ltv_ratio || 3.0).toFixed(1) + 'x';
+            setStatusBadge('comm-ltv-status', kpis.ltv_ratio >= (targets.ltv_ratio || 3.0));
+
+            document.getElementById('comm-netprofit-value').textContent = fmtCurr(kpis.net_profit);
+            document.getElementById('comm-ticket-value').textContent = fmtCurr(kpis.avg_ticket);
+            setStatusBadge('comm-netprofit-status', kpis.net_profit > 0);
+        }
+
+        function renderOperationsView(data, kpis, targets) {
+            document.getElementById('ops-otif-value').textContent = fmtPct(kpis.otif);
+            document.getElementById('ops-otif-orders').textContent = fmtNum(data.otif_orders);
+            document.getElementById('ops-total-orders').textContent = fmtNum(data.total_orders);
+            document.getElementById('ops-otif-target').textContent = fmtPct(targets.otif);
+            setStatusBadge('ops-otif-status', kpis.otif >= targets.otif);
+
+            document.getElementById('ops-lead-value').textContent = kpis.lead_time.toFixed(1) + ' Días';
+            document.getElementById('ops-lead-days').textContent = fmtNum(data.lead_days || 0);
+            document.getElementById('ops-lead-orders').textContent = fmtNum(data.total_orders);
+            document.getElementById('ops-lead-target').textContent = targets.lead_time + ' Días';
+            setStatusBadge('ops-lead-status', kpis.lead_time <= targets.lead_time);
+
+            document.getElementById('ops-defect-value').textContent = fmtPct(kpis.defect_rate);
+            document.getElementById('ops-defect-orders').textContent = fmtNum(data.defective_orders || 0);
+            document.getElementById('ops-defect-total-orders').textContent = fmtNum(data.total_orders);
+            document.getElementById('ops-defect-target').textContent = fmtPct(targets.defect_rate);
+            setStatusBadge('ops-defect-status', kpis.defect_rate <= targets.defect_rate);
+
+            document.getElementById('ops-rot-value').textContent = kpis.rot.toFixed(2) + 'x';
+            document.getElementById('ops-cogs').textContent = fmtCurr(data.cogs);
+            document.getElementById('ops-inv-avg').textContent = fmtCurr(data.inv_avg);
+            document.getElementById('ops-rot-target').textContent = targets.rot + 'x';
+            setStatusBadge('ops-rot-status', kpis.rot >= targets.rot);
+        }
+
+        function renderFinanceView(data, kpis, targets) {
+            document.getElementById('fin-margin-value').textContent = fmtPct(kpis.margin);
+            document.getElementById('fin-sales').textContent = fmtCurr(data.total_sales);
+            document.getElementById('fin-costs').textContent = fmtCurr(data.direct_costs);
+            document.getElementById('fin-margin-target').textContent = fmtPct(targets.margin);
+            setStatusBadge('fin-margin-status', kpis.margin >= targets.margin);
+
+            document.getElementById('fin-netmargin-value').textContent = fmtPct(kpis.net_margin);
+            document.getElementById('fin-netincome').textContent = fmtCurr(data.net_income || kpis.net_profit);
+            document.getElementById('fin-netmargin-target').textContent = fmtPct(targets.net_margin || 15);
+            setStatusBadge('fin-netmargin-status', kpis.net_margin >= (targets.net_margin || 15));
+
+            document.getElementById('fin-dso-value').textContent = Math.round(kpis.dso) + ' Días';
+            document.getElementById('fin-ar').textContent = fmtCurr(data.ar);
+            document.getElementById('fin-credit-sales').textContent = fmtCurr(data.credit_sales);
+            document.getElementById('fin-dso-target').textContent = targets.dso + ' días';
+            setStatusBadge('fin-dso-status', kpis.dso <= targets.dso);
+        }
+
+        function renderTalentView(data, kpis, targets) {
+            document.getElementById('hr-turnover-value').textContent = fmtPct(kpis.turnover);
+            document.getElementById('hr-exits').textContent = fmtNum(data.hr_exits || 0);
+            document.getElementById('hr-total-staff').textContent = fmtNum(data.total_staff || 0);
+            document.getElementById('hr-turnover-target').textContent = fmtPct(targets.turnover || 3.0);
+            setStatusBadge('hr-turnover-status', kpis.turnover <= (targets.turnover || 3.0));
+
+            document.getElementById('hr-csat-value').textContent = fmtPct(kpis.csat);
+            document.getElementById('hr-csat-pos').textContent = fmtNum(data.csat_pos || 0);
+            document.getElementById('hr-csat-total').textContent = fmtNum(data.csat_total || 0);
+            document.getElementById('hr-csat-target').textContent = fmtPct(targets.csat || 85);
+            setStatusBadge('hr-csat-status', kpis.csat >= (targets.csat || 85));
+
+            document.getElementById('hr-enps-value').textContent = Math.round(kpis.enps);
+            document.getElementById('hr-enps-target').textContent = (targets.enps || 40) + ' pts';
+            setStatusBadge('hr-enps-status', kpis.enps >= (targets.enps || 40));
+
+            document.getElementById('hr-salesemp-value').textContent = fmtCurr(kpis.sales_per_emp);
+            document.getElementById('hr-salesemp-target').textContent = fmtCurr(targets.sales_per_emp || 3500);
+            setStatusBadge('hr-salesemp-status', kpis.sales_per_emp >= (targets.sales_per_emp || 3500));
+        }
+
+        function renderAllViews() {
+            const currentData = getMonthlyData()[selectedMonthKey];
+            if (!currentData) return;
+
+            applyCompanyRules();
+            const kpis = calculateKPIs(currentData);
+            renderExecutiveView(kpis, appData.targets);
+            renderStrategicKPIs(kpis, appData.targets);
+            renderCommercialView(currentData, kpis, appData.targets);
+            renderOperationsView(currentData, kpis, appData.targets);
+            renderFinanceView(currentData, kpis, appData.targets);
+            renderTalentView(currentData, kpis, appData.targets);
+            renderCharts();
+        }
+
+        function renderCharts() {
+            const monthlyData = getMonthlyData();
+            const months = Object.keys(monthlyData);
+            const labels = months.map(m => monthlyData[m].name.split(' ')[0]);
+
+            const cacData = months.map(m => calculateKPIs(monthlyData[m]).cac);
+            const ltvData = months.map(m => calculateKPIs(monthlyData[m]).ltv);
+            const convData = months.map(m => calculateKPIs(monthlyData[m]).conv);
+            const retentionData = months.map(m => calculateKPIs(monthlyData[m]).retention);
+            const otifData = months.map(m => calculateKPIs(monthlyData[m]).otif);
+            const marginData = months.map(m => calculateKPIs(monthlyData[m]).margin);
+            const salesData = months.map(m => monthlyData[m].total_sales);
+            const costsData = months.map(m => monthlyData[m].direct_costs);
+            const csatData = months.map(m => calculateKPIs(monthlyData[m]).csat);
+            const turnoverData = months.map(m => calculateKPIs(monthlyData[m]).turnover);
+
+            // Destroy existing instances
+            Object.keys(chartInstances).forEach(key => {
+                if (chartInstances[key]) chartInstances[key].destroy();
+            });
+
+            // 1. Executive Commercial Chart
+            const ctxExecComm = document.getElementById('execCommercialChart');
+            if (ctxExecComm) {
+                chartInstances.execComm = new Chart(ctxExecComm, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'CAC ($)', data: cacData, borderColor: '#0284c7', backgroundColor: 'rgba(2, 132, 199, 0.1)', yAxisID: 'y', fill: true, tension: 0.3 },
+                            { label: 'LTV ($)', data: ltvData, borderColor: '#3b82f6', backgroundColor: 'transparent', yAxisID: 'y', tension: 0.3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { type: 'linear', position: 'left', title: { display: true, text: 'Monto ($)' } }
+                        }
+                    }
+                });
+            }
+
+            // 2. Executive Ops & Finance Chart
+            const ctxExecOps = document.getElementById('execOpsFinanceChart');
+            if (ctxExecOps) {
+                chartInstances.execOps = new Chart(ctxExecOps, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'OTIF (%)', data: otifData, backgroundColor: '#f59e0b', borderRadius: 4 },
+                            { label: 'Margen Bruto (%)', data: marginData, backgroundColor: '#10b981', borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { max: 100, ticks: { callback: v => v + '%' } } }
+                    }
+                });
+            }
+
+            // 3. Commercial Detail Chart
+            const ctxCommDetail = document.getElementById('commercialDetailChart');
+            if (ctxCommDetail) {
+                chartInstances.commDetail = new Chart(ctxCommDetail, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { type: 'bar', label: 'Tasa Conversión (%)', data: convData, backgroundColor: '#6366f1', borderRadius: 4, yAxisID: 'y' },
+                            { type: 'line', label: 'Tasa Retención (%)', data: retentionData, borderColor: '#8b5cf6', backgroundColor: 'transparent', yAxisID: 'y1', tension: 0.3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { type: 'linear', position: 'left', max: 100, title: { display: true, text: 'Conversión (%)' } },
+                            y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, max: 100, title: { display: true, text: 'Retención (%)' } }
+                        }
+                    }
+                });
+            }
+
+            // 4. Operations Detail Chart
+            const ctxOpsDetail = document.getElementById('opsDetailChart');
+            if (ctxOpsDetail) {
+                const leadData = months.map(m => calculateKPIs(monthlyData[m]).lead_time);
+                const defectData = months.map(m => calculateKPIs(monthlyData[m]).defect_rate);
+                chartInstances.opsDetail = new Chart(ctxOpsDetail, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'OTIF (%)', data: otifData, borderColor: '#f59e0b', backgroundColor: 'transparent', tension: 0.3 },
+                            { label: 'Lead Time (Días)', data: leadData, borderColor: '#a855f7', backgroundColor: 'transparent', tension: 0.3 },
+                            { label: 'Tasa Errores (%)', data: defectData, borderColor: '#f43f5e', backgroundColor: 'transparent', tension: 0.3 }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // 5. Finance Detail Chart
+            const ctxFinDetail = document.getElementById('financeDetailChart');
+            if (ctxFinDetail) {
+                chartInstances.finDetail = new Chart(ctxFinDetail, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Ventas Totales ($)', data: salesData, backgroundColor: '#10b981', borderRadius: 4 },
+                            { label: 'Costos Directos ($)', data: costsData, backgroundColor: '#64748b', borderRadius: 4 }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // 6. Talent & CS Detail Chart
+            const ctxTalentDetail = document.getElementById('talentDetailChart');
+            if (ctxTalentDetail) {
+                chartInstances.talentDetail = new Chart(ctxTalentDetail, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'CSAT Satisfacción (%)', data: csatData, borderColor: '#06b6d4', backgroundColor: 'rgba(6, 182, 212, 0.1)', fill: true, yAxisID: 'y', tension: 0.3 },
+                            { label: 'Rotación Personal (%)', data: turnoverData, borderColor: '#f43f5e', backgroundColor: 'transparent', yAxisID: 'y1', tension: 0.3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { type: 'linear', position: 'left', max: 100, title: { display: true, text: 'CSAT (%)' } },
+                            y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Rotación (%)' } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function populateMonthSelector() {
+            const selector = document.getElementById('monthSelector');
+            if (!selector) return;
+
+            selector.innerHTML = '';
+            const monthlyData = getMonthlyData();
+            Object.keys(monthlyData).forEach(key => {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = monthlyData[key].name;
+                if (key === selectedMonthKey) option.selected = true;
+                selector.appendChild(option);
+            });
+
+        }
+
+        function loadAdminForm() {
+            const data = getMonthlyData()[selectedMonthKey];
+            if (!data) return;
+
+            document.getElementById('adminSelectedMonthLabel').textContent = data.name;
+
+            document.getElementById('input_mkt_spend').value = data.mkt_spend;
+            document.getElementById('input_new_clients').value = data.new_clients;
+            document.getElementById('input_closed_sales').value = data.closed_sales;
+            document.getElementById('input_prospects').value = data.prospects;
+            document.getElementById('input_retained_clients').value = data.retained_clients || 0;
+            document.getElementById('input_active_clients').value = data.active_clients || 0;
+            document.getElementById('input_ltv').value = data.ltv || 0;
+            document.getElementById('input_sales_target').value = data.sales_target || 0;
+            document.getElementById('input_mkt_attributed_profit').value = data.mkt_attributed_profit || 0;
+            document.getElementById('input_mkt_leads').value = data.mkt_leads || 0;
+            document.getElementById('input_mkt_converted_leads').value = data.mkt_converted_leads || 0;
+
+            document.getElementById('input_otif_orders').value = data.otif_orders;
+            document.getElementById('input_total_orders').value = data.total_orders;
+            document.getElementById('input_lead_days').value = data.lead_days || 0;
+            document.getElementById('input_defective_orders').value = data.defective_orders || 0;
+            document.getElementById('input_cogs').value = data.cogs;
+            document.getElementById('input_inv_avg').value = data.inv_avg;
+            document.getElementById('input_inv_end').value = data.inv_end || 0;
+            document.getElementById('input_period_days').value = data.period_days || 30;
+
+            document.getElementById('input_total_sales').value = data.total_sales;
+            document.getElementById('input_direct_costs').value = data.direct_costs;
+            document.getElementById('input_net_income').value = data.net_income || 0;
+            document.getElementById('input_ar').value = data.ar || 0;
+            document.getElementById('input_credit_sales').value = data.credit_sales || 0;
+            applyCompanyRules();
+
+            document.getElementById('input_hr_exits').value = data.hr_exits || 0;
+            document.getElementById('input_total_staff').value = data.total_staff || 1;
+            document.getElementById('input_avg_staff').value = data.avg_staff ?? data.total_staff ?? 1;
+            document.getElementById('input_csat_pos').value = data.csat_pos || 0;
+            document.getElementById('input_csat_total').value = data.csat_total || 1;
+            document.getElementById('input_enps').value = data.enps || 0;
+        }
+
+        function loadTargetsForm() {
+            const t = appData.targets;
+            document.getElementById('target_cac').value = t.cac;
+            document.getElementById('target_conv').value = t.conv;
+            document.getElementById('target_retention').value = t.retention;
+            document.getElementById('target_ltv_ratio').value = t.ltv_ratio || 3.0;
+            document.getElementById('target_otif').value = t.otif;
+            document.getElementById('target_lead').value = t.lead_time;
+            document.getElementById('target_rot').value = t.rot;
+            document.getElementById('target_margin').value = t.margin;
+            document.getElementById('target_netmargin').value = t.net_margin || 15;
+            document.getElementById('target_turnover').value = t.turnover || 3.0;
+            document.getElementById('target_csat').value = t.csat || 85;
+            document.getElementById('target_defect_rate').value = t.defect_rate ?? 2.0;
+            document.getElementById('target_dso').value = t.dso ?? 45;
+            document.getElementById('target_enps').value = t.enps ?? 40;
+            document.getElementById('target_sales_per_emp').value = t.sales_per_emp ?? 3500;
+            document.getElementById('target_sales_compliance').value = t.sales_compliance ?? 100;
+            document.getElementById('target_doy').value = t.doy ?? 60;
+            document.getElementById('target_roi_mkt').value = t.roi_mkt ?? 0;
+            document.getElementById('target_mkt_lead_conv').value = t.mkt_lead_conv ?? 10;
+        }
+
+        function setupEventListeners() {
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('loginUsername').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                let loginResult = null;
+
+                try {
+                    if (isRemoteAuthConfigured()) {
+                        loginResult = await apiRequest('login', { username, password });
+                    } else {
+                        const passwordHash = await hashText(password);
+                        if (username === ADMIN_USERNAME && passwordHash === ADMIN_PASSWORD_HASH) {
+                            loginResult = { token: '', user: { username: 'admin', name: 'Administrador local', role: 'admin' } };
+                        } else {
+                            throw new Error('Usuario o contraseña incorrectos.');
+                        }
+                    }
+
+                    currentUser = loginResult.user;
+                    authToken = loginResult.token || '';
+                    populateCompanySelector();
+                    if (!getAllowedCompanies().length) throw new Error('Este usuario no tiene empresas asignadas.');
+                    isAdminAuthenticated = true;
+                    await loadRemoteKpiData();
+                    populateMonthSelector();
+                    persistSession();
+                    showAuthenticatedApp();
+                    renderAllViews();
+                    switchView('executive');
+                    showToast(`Sesión iniciada como ${currentUser.name || currentUser.username}.`);
+                } catch (error) {
+                    document.getElementById('loginError').textContent = error.message;
+                    document.getElementById('loginError').classList.remove('hidden');
+                    document.getElementById('loginPassword').value = '';
+                    document.getElementById('loginPassword').focus();
+                }
+            });
+
+            ['loginUsername', 'loginPassword'].forEach(id => {
+                document.getElementById(id).addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('loginForm').requestSubmit();
+                    }
+                });
+            });
+
+            document.getElementById('closeLoginModal').addEventListener('click', closeLoginModal);
+            document.getElementById('loginModal').addEventListener('click', (e) => {
+                if (e.target.id === 'loginModal') closeLoginModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeLoginModal();
+            });
+
+            document.getElementById('btnLogout').addEventListener('click', () => {
+                logoutUser();
+            });
+            document.getElementById('globalLogoutBtn').addEventListener('click', () => logoutUser());
+
+            document.getElementById('manageUsersBtn').addEventListener('click', async () => {
+                const panel = document.getElementById('userManagementPanel');
+                const button = document.getElementById('manageUsersBtn');
+                const willOpen = panel.classList.contains('hidden');
+                panel.classList.toggle('hidden', !willOpen);
+                button.setAttribute('aria-expanded', String(willOpen));
+                button.querySelector('span').textContent = willOpen ? 'Ocultar usuarios' : 'Administrar usuarios';
+                if (willOpen) {
+                    await loadUsers();
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+
+            document.getElementById('refreshUsersBtn').addEventListener('click', loadUsers);
+            document.getElementById('new_role').addEventListener('change', (e) => {
+                const isAdmin = e.target.value === 'admin';
+                ['new_company_artico', 'new_company_luxxor'].forEach(id => {
+                    const checkbox = document.getElementById(id);
+                    if (isAdmin) checkbox.checked = true;
+                    checkbox.disabled = isAdmin;
+                });
+            });
+            document.getElementById('companySelector').addEventListener('change', (e) => {
+                selectedCompany = e.target.value;
+                sessionStorage.setItem('kpi_selected_company', selectedCompany);
+                populateMonthSelector();
+                loadAdminForm();
+                renderAllViews();
+                showToast(`Empresa seleccionada: ${selectedCompany}.`);
+            });
+            document.getElementById('monthSelector').addEventListener('change', (e) => {
+                selectedMonthKey = e.target.value;
+                loadAdminForm();
+                renderAllViews();
+                showToast(`Cambiado a ${getMonthlyData()[selectedMonthKey].name}`);
+            });
+            document.getElementById('newUserForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitButton = e.submitter;
+                if (submitButton) submitButton.disabled = true;
+                try {
+                    const companies = ['ARTICO', 'LUXXOR'].filter(company => document.getElementById(`new_company_${company.toLowerCase()}`).checked);
+                    if (!companies.length) throw new Error('Selecciona al menos una empresa para el usuario.');
+                    await apiRequest('createUser', {
+                        token: authToken,
+                        username: document.getElementById('new_username').value,
+                        name: document.getElementById('new_name').value,
+                        role: document.getElementById('new_role').value,
+                        password: document.getElementById('new_password').value,
+                        companies
+                    });
+                    e.target.reset();
+                    ['new_company_artico', 'new_company_luxxor'].forEach(id => {
+                        document.getElementById(id).disabled = false;
+                    });
+                    showToast('Usuario creado correctamente.');
+                    await loadUsers();
+                } catch (error) {
+                    showToast(error.message, 'error');
+                } finally {
+                    if (submitButton) submitButton.disabled = false;
+                }
+            });
+
+            // Data Form Submit
+            document.getElementById('kpiDataForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const d = getMonthlyData()[selectedMonthKey];
+
+                const relatedValues = {
+                    closedSales: Number(document.getElementById('input_closed_sales').value),
+                    prospects: Number(document.getElementById('input_prospects').value),
+                    retainedClients: Number(document.getElementById('input_retained_clients').value),
+                    activeClients: Number(document.getElementById('input_active_clients').value),
+                    marketingLeads: Number(document.getElementById('input_mkt_leads').value),
+                    convertedMarketingLeads: Number(document.getElementById('input_mkt_converted_leads').value),
+                    otifOrders: Number(document.getElementById('input_otif_orders').value),
+                    defectiveOrders: Number(document.getElementById('input_defective_orders').value),
+                    totalOrders: Number(document.getElementById('input_total_orders').value),
+                    hrExits: Number(document.getElementById('input_hr_exits').value),
+                    totalStaff: Number(document.getElementById('input_total_staff').value),
+                    averageStaff: Number(document.getElementById('input_avg_staff').value),
+                    csatPositive: Number(document.getElementById('input_csat_pos').value),
+                    csatTotal: Number(document.getElementById('input_csat_total').value)
+                };
+
+                const validationErrors = [];
+                if (relatedValues.closedSales > relatedValues.prospects) validationErrors.push('las ventas cerradas no pueden superar las cotizaciones');
+                if (relatedValues.retainedClients > relatedValues.activeClients) validationErrors.push('los clientes retenidos no pueden superar los clientes activos');
+                if (relatedValues.convertedMarketingLeads > relatedValues.marketingLeads) validationErrors.push('los leads convertidos de Marketing no pueden superar los leads de Marketing');
+                if (relatedValues.otifOrders > relatedValues.totalOrders) validationErrors.push('los pedidos OTIF no pueden superar el total de pedidos');
+                if (relatedValues.defectiveOrders > relatedValues.totalOrders) validationErrors.push('los pedidos defectuosos no pueden superar el total de pedidos');
+                if (relatedValues.hrExits > relatedValues.averageStaff) validationErrors.push('las bajas no pueden superar el promedio de empleados');
+                if (relatedValues.csatPositive > relatedValues.csatTotal) validationErrors.push('las respuestas CSAT positivas no pueden superar el total de encuestas');
+
+                if (validationErrors.length) {
+                    showToast(`Revisa los datos: ${validationErrors.join('; ')}.`, 'error');
+                    return;
+                }
+
+                d.mkt_spend = parseFloat(document.getElementById('input_mkt_spend').value) || 0;
+                d.new_clients = parseInt(document.getElementById('input_new_clients').value) || 0;
+                d.closed_sales = parseInt(document.getElementById('input_closed_sales').value) || 0;
+                d.prospects = parseInt(document.getElementById('input_prospects').value) || 0;
+                d.retained_clients = parseInt(document.getElementById('input_retained_clients').value) || 0;
+                d.active_clients = parseInt(document.getElementById('input_active_clients').value) || 0;
+                d.ltv = parseFloat(document.getElementById('input_ltv').value) || 0;
+                d.sales_target = parseFloat(document.getElementById('input_sales_target').value) || 0;
+                d.mkt_attributed_profit = parseFloat(document.getElementById('input_mkt_attributed_profit').value) || 0;
+                d.mkt_leads = parseInt(document.getElementById('input_mkt_leads').value) || 0;
+                d.mkt_converted_leads = parseInt(document.getElementById('input_mkt_converted_leads').value) || 0;
+
+                d.otif_orders = parseInt(document.getElementById('input_otif_orders').value) || 0;
+                d.total_orders = parseInt(document.getElementById('input_total_orders').value) || 0;
+                d.lead_days = parseFloat(document.getElementById('input_lead_days').value) || 0;
+                d.defective_orders = parseInt(document.getElementById('input_defective_orders').value) || 0;
+                d.cogs = parseFloat(document.getElementById('input_cogs').value) || 0;
+                d.inv_avg = parseFloat(document.getElementById('input_inv_avg').value) || 0;
+                d.inv_end = parseFloat(document.getElementById('input_inv_end').value) || 0;
+                d.period_days = parseInt(document.getElementById('input_period_days').value) || 30;
+
+                d.total_sales = parseFloat(document.getElementById('input_total_sales').value) || 0;
+                d.direct_costs = parseFloat(document.getElementById('input_direct_costs').value) || 0;
+                d.net_income = parseFloat(document.getElementById('input_net_income').value) || 0;
+                d.ar = selectedCompany === 'LUXXOR' ? (parseFloat(document.getElementById('input_ar').value) || 0) : 0;
+                d.credit_sales = selectedCompany === 'LUXXOR' ? (parseFloat(document.getElementById('input_credit_sales').value) || 0) : 0;
+
+                d.hr_exits = parseInt(document.getElementById('input_hr_exits').value) || 0;
+                d.total_staff = parseInt(document.getElementById('input_total_staff').value) || 1;
+                d.avg_staff = parseFloat(document.getElementById('input_avg_staff').value) || d.total_staff;
+                d.csat_pos = parseInt(document.getElementById('input_csat_pos').value) || 0;
+                d.csat_total = parseInt(document.getElementById('input_csat_total').value) || 1;
+                d.enps = parseInt(document.getElementById('input_enps').value) || 0;
+
+                try {
+                    await saveCurrentMonth();
+                    renderAllViews();
+                    showToast(`Datos de ${d.name} guardados y sincronizados en Google Sheets.`);
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            });
+
+            // Targets Form Submit
+            document.getElementById('targetsForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                appData.targets.cac = parseFloat(document.getElementById('target_cac').value) || 0;
+                appData.targets.conv = parseFloat(document.getElementById('target_conv').value) || 0;
+                appData.targets.retention = parseFloat(document.getElementById('target_retention').value) || 80;
+                appData.targets.ltv_ratio = parseFloat(document.getElementById('target_ltv_ratio').value) || 3.0;
+                appData.targets.otif = parseFloat(document.getElementById('target_otif').value) || 0;
+                appData.targets.lead_time = parseFloat(document.getElementById('target_lead').value) || 2.5;
+                appData.targets.rot = parseFloat(document.getElementById('target_rot').value) || 0;
+                appData.targets.margin = parseFloat(document.getElementById('target_margin').value) || 0;
+                appData.targets.net_margin = parseFloat(document.getElementById('target_netmargin').value) || 15;
+                appData.targets.turnover = parseFloat(document.getElementById('target_turnover').value) || 3.0;
+                appData.targets.csat = parseFloat(document.getElementById('target_csat').value) || 85;
+                appData.targets.defect_rate = parseFloat(document.getElementById('target_defect_rate').value) || 0;
+                appData.targets.dso = parseFloat(document.getElementById('target_dso').value) || 0;
+                appData.targets.enps = parseFloat(document.getElementById('target_enps').value);
+                appData.targets.sales_per_emp = parseFloat(document.getElementById('target_sales_per_emp').value) || 0;
+                appData.targets.sales_compliance = parseFloat(document.getElementById('target_sales_compliance').value) || 0;
+                appData.targets.doy = parseFloat(document.getElementById('target_doy').value) || 0;
+                appData.targets.roi_mkt = parseFloat(document.getElementById('target_roi_mkt').value) || 0;
+                appData.targets.mkt_lead_conv = parseFloat(document.getElementById('target_mkt_lead_conv').value) || 0;
+
+                if (!Number.isFinite(appData.targets.enps)) appData.targets.enps = 40;
+                try {
+                    await saveTargetsRemote();
+                    renderAllViews();
+                    showToast('Metas guardadas y sincronizadas en Google Sheets.');
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            });
+
+            // Reset Default Data
+            document.getElementById('btnResetDefault').addEventListener('click', async () => {
+                if (!window.confirm('¿Restaurar todos los datos de ejemplo? Esta acción reemplazará los cambios guardados.')) return;
+                appData = mergeWithDefaults(defaultDatabase);
+                try {
+                    await saveAllRemoteData();
+                    loadTargetsForm();
+                    loadAdminForm();
+                    renderAllViews();
+                    showToast('Datos de ejemplo restaurados y sincronizados.');
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            });
+
+            // Discard Changes
+            document.getElementById('btnCancelEdit').addEventListener('click', () => {
+                loadAdminForm();
+                showToast('Cambios descartados.');
+            });
+
+            // Export to JSON
+            document.getElementById('exportBtn').addEventListener('click', () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `kpi_dashboard_export_${selectedMonthKey}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+                showToast('Archivo JSON exportado.');
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            setupEventListeners();
+            startInactivityMonitor();
+            if (isAdminAuthenticated && currentUser) {
+                try {
+                    await loadRemoteKpiData();
+                    populateCompanySelector();
+                    populateMonthSelector();
+                    loadTargetsForm();
+                    loadAdminForm();
+                    renderAllViews();
+                    showAuthenticatedApp();
+                    switchView('executive');
+                } catch (error) {
+                    logoutUser(error.message);
+                }
+            } else {
+                hideAuthenticatedApp();
+                openLoginModal();
+            }
+        });
+    </script>
+</body>
+</html>
