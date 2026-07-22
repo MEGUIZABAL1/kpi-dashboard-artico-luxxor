@@ -1368,7 +1368,8 @@
                 let legacyData = null;
                 try { legacyData = JSON.parse(localStorage.getItem('kpi_dashboard_db_v2') || 'null'); } catch (error) {}
                 appData = mergeWithDefaults(legacyData || { targets: result.targets || {} });
-                await saveAllRemoteData();
+                
+        
             }
             localStorage.removeItem('kpi_dashboard_db_v2');
         }
